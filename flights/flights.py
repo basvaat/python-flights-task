@@ -162,12 +162,9 @@ class Flights:
         return all_flights
 
 
-    def sort_by_final_price():
+    def sort_by_final_price(self, all_flights):
         
-
-
-
-        return
+        return sorted(all_flights, key = lambda i: i['total_price'])
 
     def collect_all_routes(self):
         self.get_origins_and_destinations()
@@ -177,6 +174,7 @@ class Flights:
         all_flights = self.get_all_flights_in_correct_format(all_flights_grouped)
         all_flights = self.filter_overlay_time(all_flights)
         all_flights = self.add_flight_details(all_flights)
+        all_flights = self.sort_by_final_price(all_flights)
 
         return all_flights
     
