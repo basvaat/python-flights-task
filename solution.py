@@ -17,5 +17,6 @@ if __name__ == '__main__':
     flights_data = readed_example.csv_as_list_of_dicts()
 
     flight = Flights(flights_data, args.origin, args.destination, args.bags)
-    print(json.dumps(flight.collect_all_routes()))
+    flight.check_user_input()
+    print(flight.collect_all_routes())
 
