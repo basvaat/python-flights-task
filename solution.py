@@ -2,7 +2,6 @@
 from utils import Reader
 from flights import Flights
 import argparse
-import json
 
 if __name__ == '__main__':
 
