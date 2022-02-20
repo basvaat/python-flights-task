@@ -1,7 +1,7 @@
 import itertools
 from datetime import timedelta
 from utils import DateHandler
-
+import json
 class Flights:
 
     def __init__(self, flights_data, origin, destination, bags):
@@ -9,14 +9,22 @@ class Flights:
         self.origin = origin
         self.destination = destination
         self.bags = bags
+
+    def bag_number_error(self):
+        if int(self.bags) > 10:
+            raise ValueError('Maximum 10 bags allowed as argument')
     
+    def origins_destinations_error(self):
+        if self.origin not in self.origins or self.destination not in self.destinations:
+            raise ValueError('Origin or destination is not correct')
+
+
     def get_origins_and_destinations(self):
         # get origins and destinations
         self.destinations = set(map(lambda flight: flight['destination'], self.flights_data.values()))
         self.origins = set(map(lambda flight: flight['origin'], self.flights_data.values()))
-        if self.origin not in self.origins or self.destination not in self.destinations:
-            raise ValueError('Origin or destination is not correct')
-        
+
+    
     def drop_incorrect_routes_based_on_origins_and_destinations(self, all_routes):
         # drop routes where origins to in origins or destination not in destinations
         all_routes_filtered = []
@@ -181,6 +189,11 @@ class Flights:
         return list(filter(lambda flight: flight['bags_allowed'] >= int(self.bags), all_flights))
 
 
+    def check_user_input(self):
+        self.get_origins_and_destinations()
+        self.origins_destinations_error()
+        self.bag_number_error()
+
     def collect_all_routes(self):
         self.get_origins_and_destinations()
         all_routes = self.get_all_possible_routes()
@@ -189,9 +202,9 @@ class Flights:
         all_flights = self.get_all_flights_in_correct_format(all_flights_grouped)
         all_flights = self.filter_overlay_time(all_flights, 1, 6)
         all_flights = self.add_flight_details(all_flights)
-        # all_flights = self.select_where_bags_allowed(all_flights)
+        all_flights = self.select_where_bags_allowed(all_flights)
         all_flights = self.sort_by_final_price(all_flights)
-
-        return all_flights
+        
+        return json.dumps(all_flights)
     
 
