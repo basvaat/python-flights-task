@@ -1,31 +1,20 @@
-# This is a sample Python script.
-
 
 from utils import Reader
 from flights import Flights
-# import argparse
-import sys
+import argparse
 
-
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("exmaplefile")
-    # parser.add_argument("origin")
-    # parser.add_argument("destination")
-    # args = parser.parse_args()
-
-    args = sys.argv
-
-    filename = args[1]
-    origin = args[2]
-    destination = args[3]
-    bags = args[4]
-
-    readed_example = Reader('./example/'+filename)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filename', type=str)
+    parser.add_argument("origin", type=str)
+    parser.add_argument("destination", type=str)
+    parser.add_argument('--bags', type=int, required=True)
+    args = parser.parse_args()
+    
+    readed_example = Reader('./example/'+args.filename)
     flights_data = readed_example.csv_as_list_of_dicts()
 
-    flight = Flights(flights_data, origin, destination, bags)
+    flight = Flights(flights_data, args.origin, args.destination, args.bags)
     all_routes = flight.collect_all_routes()
     print(all_routes)
