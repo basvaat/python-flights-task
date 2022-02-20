@@ -4,10 +4,11 @@ from utils import DateHandler
 
 class Flights:
 
-    def __init__(self, flights_data, origin, destination):
+    def __init__(self, flights_data, origin, destination, bags):
         self.flights_data = flights_data
         self.origin = origin
         self.destination = destination
+        self.bags = bags
     
     def get_origins_and_destinations(self):
         # get origins and destinations
@@ -102,23 +103,34 @@ class Flights:
         return all_flights
 
 
-    def filter_overlay_time(self, all_flights):
+    def filter_overlay_time(self, all_flights, min_hours, max_hours):
         all_flights_filtered_datetime = []
 
         for flts in range(len(all_flights)):
             flights = all_flights[flts]
-            if len(flights['flights']) > 1: # not direct rout
+            # print(flights)
+            add = False
+            if len(flights['flights']) > 1: # not direct route
+                # print(flights)
                 for flight_no in range(len(flights['flights'])-1):
 
                     departure_time = DateHandler.convert_datetime(flights['flights'][flight_no+1]['departure'])
                     arrival_time = DateHandler.convert_datetime(flights['flights'][flight_no]['arrival'])
-                    diff = DateHandler.calculate_date_difference(departure_time, arrival_time)
-            
-                    if diff.total_seconds() >= 60*60 and diff.total_seconds() <= 6*60*60: # 1h <= diff <= 6h
-                        all_flights_filtered_datetime.append(all_flights[flts])
+                    diff = DateHandler.calculate_date_difference(arrival_time, departure_time)
+
+                    # print(departure_time, arrival_time, diff)
+                   
+                    if diff.total_seconds() >= min_hours*60*60 and diff.total_seconds() <= max_hours*60*60: 
+                        add = True
+                        # print('add')
+                    else:
+                        add = False
                         break
-            else:
-                all_flights_filtered_datetime.append(all_flights[flts])
+                    
+            elif len(flights['flights']) == 1: 
+                add = True
+            if add == True:
+                all_flights_filtered_datetime.append(all_flights[flts])       
 
         return all_flights_filtered_datetime
 
@@ -127,7 +139,7 @@ class Flights:
         for flights in all_flights:
 
             bags_allowed = 10
-            bags_count = 0
+            bags_count = int(self.bags)
             destination = None
             origin = None
             total_price = 0
@@ -163,8 +175,11 @@ class Flights:
 
 
     def sort_by_final_price(self, all_flights):
-        
         return sorted(all_flights, key = lambda i: i['total_price'])
+
+    def select_where_bags_allowed(self, all_flights):
+        return list(filter(lambda flight: flight['bags_allowed'] >= int(self.bags), all_flights))
+
 
     def collect_all_routes(self):
         self.get_origins_and_destinations()
@@ -172,8 +187,9 @@ class Flights:
         selected_possible_routes = self.select_possible_routes(all_routes)
         all_flights_grouped = self.get_all_planes_with_selected_routes(selected_possible_routes) 
         all_flights = self.get_all_flights_in_correct_format(all_flights_grouped)
-        all_flights = self.filter_overlay_time(all_flights)
+        all_flights = self.filter_overlay_time(all_flights, 1, 6)
         all_flights = self.add_flight_details(all_flights)
+        # all_flights = self.select_where_bags_allowed(all_flights)
         all_flights = self.sort_by_final_price(all_flights)
 
         return all_flights
