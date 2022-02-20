@@ -21,10 +21,11 @@ if __name__ == '__main__':
     filename = args[1]
     origin = args[2]
     destination = args[3]
+    bags = args[4]
 
     readed_example = Reader('./example/'+filename)
     flights_data = readed_example.csv_as_list_of_dicts()
 
-    flight = Flights(flights_data, origin, destination)
+    flight = Flights(flights_data, origin, destination, bags)
     all_routes = flight.collect_all_routes()
     print(all_routes)
