@@ -1,6 +1,8 @@
 import csv, json
 class Reader:
-
+    """
+    Reads in csv file with input path.
+    """
     def __init__(self, inputPath):
         self.inputPath = inputPath
 

@@ -1,7 +1,9 @@
 from datetime import datetime
 
 class DateHandler:
-
+    """
+    Handles dates, formats datetime and calculates timedelta.
+    """
     def __init__(self) -> None:
         pass
 
