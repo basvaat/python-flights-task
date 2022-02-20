@@ -2,6 +2,7 @@
 from utils import Reader
 from flights import Flights
 import argparse
+import json
 
 if __name__ == '__main__':
 
@@ -16,5 +17,5 @@ if __name__ == '__main__':
     flights_data = readed_example.csv_as_list_of_dicts()
 
     flight = Flights(flights_data, args.origin, args.destination, args.bags)
-    all_routes = flight.collect_all_routes()
-    print(all_routes)
+    print(json.dumps(flight.collect_all_routes()))
+
