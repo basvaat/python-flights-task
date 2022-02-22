@@ -11,7 +11,7 @@ class DateHandler:
         return next_date - first_date       
 
     def convert_datetime(date):
-        return datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
+        return datetime.fromisoformat(date)
 
     def convert_timedelta_to_datetime(timedelta):
         return str(timedelta)
