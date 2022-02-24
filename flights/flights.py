@@ -1,13 +1,9 @@
 import itertools
-from datetime import timedelta,datetime
+from datetime import timedelta, datetime
 from utils import DateHandler
 import json
-
 class Flights:
-    """
-    Collects possible routes based on user inputs (origin, destionation, number of bags)
-    """
-
+    """Collects possible routes based on user inputs (origin, destionation, number of bags)"""
     def __init__(self, flights_data, origin, destination, bags):
         self.flights_data = flights_data
         self.origin = origin
@@ -15,59 +11,33 @@ class Flights:
         self.bags = bags
 
     def bag_number_error(self):
+        """Raise Error if number of bags >10."""
         if int(self.bags) > 10:
             raise ValueError('Maximum 10 bags allowed as argument')
 
     def origins_destinations_error(self):
-
+        """Raise Error if origin or destination is not correct."""
         if self.origin not in self.origins or self.destination not in self.destinations:
             raise ValueError('Origin or destination is not correct')
 
     def get_origins_and_destinations(self):
-        """
-        Collects all destinations and origins from dataset.
-        """
+        """Collects all destinations and origins from dataset."""
         self.destinations = set(
             map(lambda flight: flight['destination'], self.flights_data.values()))
         self.origins = set(
             map(lambda flight: flight['origin'], self.flights_data.values()))
 
-    def drop_incorrect_routes_based_on_origins_and_destinations(self, all_routes):
-        """
-        Drop routes where departure and final arrival is not matching.
-        """
-        # drop routes where origins to in origins or destination not in destinations
-        all_routes_filtered = []
-        for route in all_routes:
-            if route[0] in self.origins:
-                for airport in route[1:]:
-                    # inner airports are origins and destinations
-                    if airport in self.origins and airport in self.destinations and route not in all_routes_filtered:
-                        all_routes_filtered.append(route)
-                    # check that last airport in destinations
-                    if airport == route[-1] and airport in self.destinations and route not in all_routes_filtered:
-                        all_routes_filtered.append(route)
-
-        return all_routes_filtered
-
     def get_all_possible_routes(self):
-        """
-        Collect all possible routes based on input data, not only direct routes.
-        """
+        """Collect all possible routes based on input data, not only direct routes."""
         all_routes = []
         all_airports = self.origins.union(self.destinations)
         for i in range(2, len(all_airports)+1):
             all_routes.append(list(itertools.permutations(all_airports, i)))
         all_routes = list(itertools.chain.from_iterable(all_routes))
-        # print('all routes len ', len(all_routes))
-        # all_routes_filtered = self.drop_incorrect_routes_based_on_origins_and_destinations(
-            # all_routes)
         return all_routes
 
     def select_possible_routes(self, all_routes):
-        """
-        Selects only possible routes from origin to destionation
-        """
+        """Selects only possible routes from origin to destination"""
         selected_possible_routes = []
         for route in all_routes:
             if route[0] == self.origin and route[-1] == self.destination:
@@ -75,133 +45,62 @@ class Flights:
         return selected_possible_routes
 
     def get_all_planes_with_selected_routes(self, selected_possible_routes):
+        """Groups the possible routes based on flights.
+        eg. Route: A->B->C, groups: A->B, B->C
         """
-        Groups the possible routes based on flights.
-        Eg. Route: A->B->C, groups: A->B, B->C
-
-        {
-            (A,B,C): {
-                (A,B): [],
-                (B,C): [],
-            }
-        }
-
-        [
-            [rep1,rep2],
-            [flight,flight,flight]
-        ]
-        """
-        # all planes with this selected routes
-        # group planes based on possible routes (a->c,a->b->c, etc.)
         groups = {}
-
         for route in selected_possible_routes:
             subroutes = {}  # if route:a->b->c: subroutes: a->b and b->c
-
             for i in range(len(route)-1):
-
                 possible_planes = []
                 for id in self.flights_data:
                     flight = self.flights_data[id]
-
                     if flight['origin'] == route[i] and flight['destination'] == route[i+1]:
                         possible_planes.append(flight)
                 subroutes[(route[i], route[i+1])] = possible_planes
             groups[route] = subroutes
-
         return groups
 
+    def is_flight_eligible(self, flight, prev_flight):
+        """Filter flights for allowed number of bags and overlay time."""
+        return (int(flight["bags_allowed"]) > self.bags and timedelta(hours=1) <= datetime.fromisoformat(flight["departure"]) - datetime.fromisoformat(prev_flight["arrival"]) <= timedelta(hours=6))
 
-    """
-        routes = [
-            [f3,f4]
-            [f1,f2]
-            [f5]
-        ]
-    
-    """
-    def product_with_overlay(*routes):
-        for route in routes:
-            for flight in route:
-                []
-        pass
-
-    def product(self, *args):
-        pools = [tuple(pool) for pool in args]
+    def conditional_product(self, *subroutes):
+        """Get cartesian product of the subroutes and filter for conditions
+        (if route A->B->C, subroutes: all flights A->B and B->C)
+        conditions: number of bags, overlay time
+        """
         result = [[]]
-
-        for pool in pools:
-            result = [x+[pool[y]] for x in result for y in range(0,len(pool)) if len(x) == 0 or (int(pool[y]["bags_allowed"]) > self.bags and timedelta(hours=1) <= datetime.fromisoformat(pool[y]["departure"]) - datetime.fromisoformat(x[-1]["arrival"])<=timedelta(hours=6))]
-        for prod in result:
-            yield tuple(prod)
+        for subroute in subroutes:
+            result = [flights+[subroute[i]] for flights in result for i in range(0, len(subroute))
+                      if len(flights) == 0 or self.is_flight_eligible(subroute[i], flights[-1])]
+        for flights in result:
+            yield tuple(flights)
 
     def get_all_flights_in_correct_format(self, groups):
-        """
-        Collects all flights in correct format.
-        """
+        """Collects all flights in correct format."""
         all_flights = []
-        i = 0
         for routes in groups:
-            if i%10 == 0:
-                pass
-                # print(i)
-            
             # direct flights
             if len(routes) == 2:
                 subroute = list(groups[routes].keys())[0]
                 assert routes == subroute
-
                 for flight in groups[routes][subroute]:
                     all_flights.append({'flights': [flight]})
-
-            # here we need to combine all routes
+            # not direct fligths
             else:
-                all_combinations = self.product(*groups[routes].values())
+                all_combinations = self.conditional_product(
+                    *groups[routes].values())
                 for flight in all_combinations:
                     all_flights.append({'flights': list(flight)})
-            i = i+1
         return all_flights
 
-   
-    
-    def filter_overlay_time(self, all_flights, min_hours, max_hours):
-        """
-        Filter based on overlay time.
-        """
-        all_flights_filtered_datetime = []
-
-        for flts in range(len(all_flights)):
-            flights = all_flights[flts]
-            add = False
-            if len(flights['flights']) > 1:  # not direct route
-                for flight_no in range(len(flights['flights'])-1):
-
-                    departure_time = DateHandler.convert_datetime(
-                        flights['flights'][flight_no+1]['departure'])
-                    arrival_time = DateHandler.convert_datetime(
-                        flights['flights'][flight_no]['arrival'])
-                    diff = DateHandler.calculate_date_difference(
-                        arrival_time, departure_time)
-
-                    if diff.total_seconds() >= min_hours*60*60 and diff.total_seconds() <= max_hours*60*60:
-                        add = True
-                    else:
-                        add = False
-                        break
-
-            elif len(flights['flights']) == 1:
-                add = True
-            if add == True:
-                all_flights_filtered_datetime.append(all_flights[flts])
-
-        return all_flights_filtered_datetime
-
     def add_flight_details(self, all_flights):
-        """
-        Add flight details (bags_allowed, bags_count, destination, origin, total_price, travel_time)
+        """Add flight details 
+        (bags_allowed, bags_count, destination, origin, total_price, travel_time)
         """
         for flights in all_flights:
-
+            # details to collect
             bags_allowed = 10
             bags_count = int(self.bags)
             destination = None
@@ -210,51 +109,42 @@ class Flights:
             travel_time = timedelta(0)
             departure_time = None
             arrival_time = None
-
+            # get details of flights
             last_flight = flights['flights'][-1]
             destination = last_flight['destination']
             arrival_time = DateHandler.convert_datetime(last_flight['arrival'])
-
             first_flight = flights['flights'][0]
             origin = first_flight['origin']
             departure_time = DateHandler.convert_datetime(
                 first_flight['departure'])
-
             travel_time_delta = DateHandler.calculate_date_difference(
                 departure_time, arrival_time)
             travel_time = DateHandler.convert_timedelta_to_datetime(
                 travel_time_delta)
-
             for flight in flights['flights']:
                 bags_allowed = min(bags_allowed, int(flight['bags_allowed']))
-
                 total_price += float(flight['base_price'])
                 total_price += float(flight['bag_price'])*bags_count
-
+            # add details to flights
             flights['bags_allowed'] = bags_allowed
             flights['bags_count'] = bags_count
             flights['destination'] = destination
             flights['origin'] = origin
             flights['total_price'] = total_price
             flights['travel_time'] = travel_time
-
         return all_flights
 
     def sort_by_final_price(self, all_flights):
-        """
-        Sorting by final price
-        """
+        """Sorting by final price"""
         return sorted(all_flights, key=lambda i: i['total_price'])
 
     def select_where_bags_allowed(self, all_flights):
-        """
-        Filter routes based on bags allowed.
-        """
+        """Filter routes based on bags allowed."""
         return list(filter(lambda flight: flight['bags_allowed'] >= int(self.bags), all_flights))
 
     def check_user_input(self):
-        """
-        Checks user input. (Correct csv format is not checked...)
+        """Checks user input. 
+        (Correct csv format is not checked...)
         """
         self.get_origins_and_destinations()
         self.origins_destinations_error()
@@ -266,24 +156,12 @@ class Flights:
         :return: json-compatible structured list of trips
         """
         self.get_origins_and_destinations()
-        # print('get_all_possible_routes')
         all_routes = self.get_all_possible_routes()
-        # print('select_possible_routes')
         selected_possible_routes = self.select_possible_routes(all_routes)
-        # print('get_all_planes_with_selected_routes')
         all_flights_grouped = self.get_all_planes_with_selected_routes(
             selected_possible_routes)
-        # print(all_flights_grouped[('WUE', 'ZRW', 'VVH', 'NNB', 'JBN')])
-        # print('get_all_flights_in_correct_format')
         all_flights = self.get_all_flights_in_correct_format(
             all_flights_grouped)
-
-        print(len(all_flights))
-        # return json.dumps(all_flights, indent=2)
-        # print('filter')
-        # all_flights = self.filter_overlay_time(all_flights, 1, 6)
-        # all_flights = self.add_flight_details(all_flights)
-        # all_flights = self.select_where_bags_allowed(all_flights)
-        # all_flights = self.sort_by_final_price(all_flights)
-
-        # return json.dumps(all_flights)
+        all_flights = self.add_flight_details(all_flights)
+        all_flights = self.sort_by_final_price(all_flights)
+        return json.dumps(all_flights)
