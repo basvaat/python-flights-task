@@ -4,7 +4,6 @@ from flights import Flights
 import argparse
 
 if __name__ == '__main__':
-
     # parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', type=str)

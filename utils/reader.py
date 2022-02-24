@@ -1,11 +1,11 @@
-import csv, json
+import csv
 class Reader:
     """
     Reads in csv file with input path.
     """
+
     def __init__(self, inputPath):
         self.inputPath = inputPath
-
 
     def csv_as_list_of_dicts(self):
         data = {}
@@ -18,5 +18,5 @@ class Reader:
                     id += 1
             return data
         except:
-            raise FileNotFoundError('File not found. File name or path is incorrect.')
-        
+            raise FileNotFoundError(
+                'File not found. File name or path is incorrect.')
